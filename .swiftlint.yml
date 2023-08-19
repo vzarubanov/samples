@@ -1,0 +1,43 @@
+disabled_rules: # rule identifiers to exclude from running
+  - identifier_name
+  - cyclomatic_complexity
+  - type_body_length
+  - number_separator
+  - large_tuple
+  - nesting
+  - generic_type_name
+  - fallthrough
+  - unused_setter_value
+  - type_name
+  - orphaned_doc_comment
+  - todo
+  - inclusive_language
+  - comment_spacing
+  - comma_inheritance
+opt_in_rules:
+  - empty_count
+  - empty_string
+  - first_where
+  - modifier_order
+  - toggle_bool
+  - unavailable_function
+included: # paths to include during linting. `--path` is ignored if present.
+  - Modules
+  - samples
+excluded: # paths to ignore during linting. Takes precedence over `included`.
+  - Modules/Tests
+
+empty_count: 
+  severity: warning
+shorthand_operator: warning
+force_try: warning
+force_cast: warning
+line_length: 180
+file_length:
+  warning: 600
+  error: 1000
+function_body_length:
+  warning: 100
+  error: 180
+function_parameter_count: 8
+reporter: "xcode" # reporter type (xcode, json, csv, checkstyle, junit, html, emoji)
