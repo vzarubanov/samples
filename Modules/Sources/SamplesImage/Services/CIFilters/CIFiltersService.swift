@@ -8,10 +8,11 @@
 import Foundation
 import CoreImage
 
-struct CIFiltersService: FiltersServiceProtocol {
+final actor CIFiltersService: FiltersServiceProtocol {
 	private let context = CIContext()
+	private var filtersCache: [Filter.ID: CIFilter] = [:]
 
-	func getFilters(ids: [Filter.ID]) -> [Filter] {
+	func getFilters(ids: [Filter.ID]) async -> [Filter] {
 		ids.compactMap { id -> Filter? in
 			guard let filter = CIFilter(name: id) else { return nil }
 			return Filter(CIAttributesDictionary: filter.attributes)
@@ -19,22 +20,32 @@ struct CIFiltersService: FiltersServiceProtocol {
 	}
 
 	func apply(filter: Filter, to image: CGImage, with options: [String: Any]) async throws -> CGImage? {
-		try await withCheckedThrowingContinuation { continuation in
-			guard let currentFilter = CIFilter(name: filter.id) else {
+
+		let ciFilter: CIFilter?
+		if let cachedFilter = filtersCache[filter.id] {
+			ciFilter = cachedFilter
+		} else {
+			ciFilter = CIFilter(name: filter.id)
+			filtersCache[filter.id] = ciFilter
+		}
+
+		return try await withCheckedThrowingContinuation { continuation in
+
+			guard let currentFilter = ciFilter else {
 				continuation.resume(throwing: FilterError.filterNotFound)
 				return
 			}
 			let ciImage = CIImage(cgImage: image)
 			currentFilter.setValue(ciImage, forKey: kCIInputImageKey)
 
-			guard let outputImage = currentFilter.outputImage else {
-				continuation.resume(throwing: FilterError.noOutputImage)
-				return
-			}
-
 			let inputKeys = currentFilter.inputKeys
 			for (key, value) in options where inputKeys.contains(key) {
 				currentFilter.setValue(value, forKey: key)
+			}
+
+			guard let outputImage = currentFilter.outputImage else {
+				continuation.resume(throwing: FilterError.noOutputImage)
+				return
 			}
 
 			let cgImage = context.createCGImage(outputImage, from: outputImage.extent)

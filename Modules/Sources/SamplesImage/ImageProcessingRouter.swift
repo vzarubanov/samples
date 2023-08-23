@@ -8,14 +8,20 @@
 import Foundation
 import UIKit
 import SamplesUI
+import SwiftUI
 
 @MainActor
 public protocol ImageProcessingRouterProtocol {
 	func makeViewController() -> UIViewController
-	func pickImage(on viewController: UIViewController) async -> UIImage?
 }
 
-public struct ImageProcessingRouter: ImageProcessingRouterProtocol {
+@MainActor
+protocol ImageProcessingRouterInternalProtocol: ImageProcessingRouterProtocol {
+	func pickImage(on viewController: UIViewController) async -> UIImage?
+	func openFilterAttributes(for filter: Filter, in viewController: UIViewController, with delegate: ImageProcessingAttributesViewModelDelegate?)
+}
+
+public struct ImageProcessingRouter: ImageProcessingRouterInternalProtocol {
 	public init() {}
 
 	public func makeViewController() -> UIViewController {
@@ -28,11 +34,21 @@ public struct ImageProcessingRouter: ImageProcessingRouterProtocol {
 		return view
 	}
 
-	public func pickImage(on viewController: UIViewController) async -> UIImage? {
+	func pickImage(on viewController: UIViewController) async -> UIImage? {
 		let fileManager = FileManager.default
 		guard let cachesDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first else { return nil }
 		let picker = SingleMediaPicker(fileManager: fileManager, destinationDirectory: cachesDirectory)
 		guard let imageModel = await picker.pickImage(on: viewController, animated: true) else { return nil }
 		return UIImage(contentsOfFile: imageModel.url.path())
+	}
+
+	func openFilterAttributes(for filter: Filter, in viewController: UIViewController, with delegate: ImageProcessingAttributesViewModelDelegate?) {
+		let viewModel = ImageProcessingAttributesViewModel(filter: filter, delegate: delegate)
+		let view = ImageProcessingAttributesView(viewModel: viewModel)
+		let hostinhViewController = UIHostingController(rootView: view)
+		hostinhViewController.modalPresentationStyle = .pageSheet
+		hostinhViewController.sheetPresentationController?.detents = [.medium(), .large()]
+
+		viewController.present(hostinhViewController, animated: true)
 	}
 }

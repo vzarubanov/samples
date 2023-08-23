@@ -11,11 +11,12 @@ import UIKit
 @MainActor
 protocol ImageProcessingPresenterProtocol {
 	func requestPickImage()
+	func requestConfigureFilter()
 	func selectFilter(at index: Int)
 }
 
-final class ImageProcessingPresenter: ImageProcessingPresenterProtocol {
-	private let router: ImageProcessingRouterProtocol
+final class ImageProcessingPresenter {
+	private let router: ImageProcessingRouterInternalProtocol
 	private let interactor: ImageProcessingInteractorProtocol
 	weak var view: ImageProcessingViewProtocol?
 
@@ -24,9 +25,17 @@ final class ImageProcessingPresenter: ImageProcessingPresenterProtocol {
 
 	private var filterViewModels: [FilterViewModel] = []
 
-	init(router: ImageProcessingRouterProtocol, interactor: ImageProcessingInteractorProtocol) {
+	init(router: ImageProcessingRouterInternalProtocol, interactor: ImageProcessingInteractorProtocol) {
 		self.router = router
 		self.interactor = interactor
+	}
+}
+
+extension ImageProcessingPresenter: ImageProcessingPresenterProtocol {
+	func requestConfigureFilter() {
+		guard let view, selectedFilterIndex < filterViewModels.count else { return }
+		let selectedFilterViewModel = filterViewModels[selectedFilterIndex]
+		router.openFilterAttributes(for: selectedFilterViewModel.filter, in: view, with: self)
 	}
 
 	func requestPickImage() {
@@ -40,12 +49,12 @@ final class ImageProcessingPresenter: ImageProcessingPresenterProtocol {
 			let filters = await interactor.getFilters()
 			filterViewModels = await getFilterModels(from: filters, for: image)
 
-			guard filterViewModels.isEmpty else {
-				selectFilter(at: selectedFilterIndex)
-				return
-			}
-
 			await MainActor.run {
+				guard filterViewModels.isEmpty else {
+					selectFilter(at: selectedFilterIndex)
+					return
+				}
+
 				viewController.set(image: image)
 				viewController.apply(filters: filterViewModels)
 				viewController.set(progressActive: false)
@@ -64,12 +73,10 @@ final class ImageProcessingPresenter: ImageProcessingPresenterProtocol {
 		view?.set(progressActive: true)
 
 		let selectedFilterViewModel = filterViewModels[index]
-		let selectedFilterAttributesViewModel = getFilterAttributesViewModel(from: selectedFilterViewModel.filter)
 
 		guard let view else { return }
 		view.set(title: selectedFilterViewModel.title)
 		view.apply(filters: filterViewModels)
-		view.apply(attributes: selectedFilterAttributesViewModel)
 		if let image = selectedFilterViewModel.thumbnail {
 			view.set(image: image)
 		}
@@ -96,24 +103,25 @@ private extension ImageProcessingPresenter {
 		return viewModels
 	}
 
-	func getFilterAttributesViewModel(from filter: Filter) -> FilterAttributesViewModel {
-		return FilterAttributesViewModel(
-			title: "Attributes:",
-			sliderAttributes: filter.attributes.numberAttributes.map {
-				return .init(
-					title: $0.name,
-					description: $0.description,
-					sliderRange: ClosedRange(uncheckedBounds: ($0.minValue, $0.maxValue)),
-					sliderValue: $0.defaultValue
-				)
-			},
-			vectorAttributes: filter.attributes.vectorAttributes.map {
-				return .init(
-					title: $0.name,
-					description: $0.description,
-					value: $0.defaultValue
-				)
+	func applyFilterAttributeValue<T>(_ value: T, forAttributeInputKey inputKey: String) {
+		Task {
+			guard let image = originalImage, selectedFilterIndex < filterViewModels.count else { return }
+			let selectedFilterViewModel = filterViewModels[selectedFilterIndex]
+
+			guard let processedImage = await interactor.apply(filter: selectedFilterViewModel.filter, to: image, with: [inputKey: value]) else { return }
+			await MainActor.run {
+				view?.set(image: processedImage)
 			}
-		)
+		}
+	}
+}
+
+extension ImageProcessingPresenter: ImageProcessingAttributesViewModelDelegate {
+	func attributesViewModelDidReceive(value: CGFloat, forAttributeId key: String) {
+		applyFilterAttributeValue(value, forAttributeInputKey: key)
+	}
+
+	func attributesViewModelDidReceive(value: FilterVectorAttribute.Vector, forAttributeId key: String) {
+		applyFilterAttributeValue(value.ciVector, forAttributeInputKey: key)
 	}
 }

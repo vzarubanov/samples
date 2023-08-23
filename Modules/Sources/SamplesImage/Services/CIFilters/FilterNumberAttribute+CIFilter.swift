@@ -9,7 +9,7 @@ import Foundation
 import CoreImage
 
 extension FilterNumberAttribute {
-	init?(CIAttributeDictionary dictionary: [String: Any]) {
+	init?(inputKey: String, attributeDictionary dictionary: [String: Any]) {
 		guard
 			let name = dictionary[kCIAttributeDisplayName] as? String,
 			let description = dictionary[kCIAttributeDescription] as? String,
@@ -21,6 +21,7 @@ extension FilterNumberAttribute {
 			return nil
 		}
 
+		self.id = inputKey
 		self.name = name
 		self.description = description
 		self.defaultValue = defaultValue

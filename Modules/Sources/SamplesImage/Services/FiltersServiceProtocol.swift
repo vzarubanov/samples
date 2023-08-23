@@ -9,6 +9,6 @@ import Foundation
 import UIKit
 
 protocol FiltersServiceProtocol {
-	func getFilters(ids: [Filter.ID]) -> [Filter]
+	func getFilters(ids: [Filter.ID]) async -> [Filter]
 	func apply(filter: Filter, to image: CGImage, with options: [String: Any]) async throws -> CGImage?
 }

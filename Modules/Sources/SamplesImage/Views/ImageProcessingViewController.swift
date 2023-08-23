@@ -15,7 +15,6 @@ protocol ImageProcessingViewProtocol: UIViewController {
 	func set(progressActive: Bool)
 
 	func apply(filters: [FilterViewModel])
-	func apply(attributes: FilterAttributesViewModel)
 }
 
 typealias ImageProcessingFiltersSnapshot = NSDiffableDataSourceSnapshot<Int, FilterViewModel>
@@ -45,14 +44,21 @@ final class ImageProcessingViewController: UIViewController {
 		configureDataSource(collectionView: filtersCollectionView)
 	}
 
-	@objc func rightBarButtonItemAction() {
+	@objc func addBarButtonItemAction() {
 		presenter.requestPickImage()
+	}
+
+	@objc func editBarButtonItemAction() {
+		presenter.requestConfigureFilter()
 	}
 }
 
 private extension ImageProcessingViewController {
 	func configureUI() {
-		navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(rightBarButtonItemAction))
+		navigationItem.rightBarButtonItems = [
+			UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addBarButtonItemAction)),
+			UIBarButtonItem(barButtonSystemItem: .edit, target: self, action: #selector(editBarButtonItemAction))
+		]
 
 		filtersCollectionView.register(ImageProcessingFilterCell.self, forCellWithReuseIdentifier: ImageProcessingFilterCell.reuseIdentifier)
 	}
@@ -75,14 +81,14 @@ private extension ImageProcessingViewController {
 
 	func setFiltersCollectionView(hidden: Bool, animated: Bool) {
 
-		guard (filtersCollectionView.alpha == 1) == hidden else { return }
+		guard filtersCollectionView.isHidden != hidden else { return }
 		guard animated else {
-			filtersCollectionView.alpha = hidden ? 0 : 1
+			filtersCollectionView.isHidden = hidden
 			return
 		}
 
 		UIView.animate(withDuration: Constants.filtersCollectionViewAppearanceAnimationDuration) {
-			self.filtersCollectionView.alpha = hidden ? 0 : 1
+			self.filtersCollectionView.isHidden = hidden
 		}
 	}
 }
@@ -115,10 +121,6 @@ extension ImageProcessingViewController: ImageProcessingViewProtocol {
 		} else {
 			activityIndicator.stopAnimating()
 		}
-	}
-
-	func apply(attributes: FilterAttributesViewModel) {
-		
 	}
 }
 

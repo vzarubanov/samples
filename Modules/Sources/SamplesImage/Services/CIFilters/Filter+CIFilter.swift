@@ -29,10 +29,10 @@ extension Filter {
 
 			switch typeName {
 			case "NSNumber":
-				guard let numberAttribute = FilterNumberAttribute(CIAttributeDictionary: attributeDict) else { continue }
+				guard let numberAttribute = FilterNumberAttribute(inputKey: key, attributeDictionary: attributeDict) else { continue }
 				numberAttributes.append(numberAttribute)
 			case "CIVector":
-				guard let vectorAttribute = FilterVectorAttribute(CIAttributeDictionary: attributeDict) else { continue }
+				guard let vectorAttribute = FilterVectorAttribute(inputKey: key, attributeDictionary: attributeDict) else { continue }
 				vectorAttributes.append(vectorAttribute)
 			case "CIImage":
 				continue
